@@ -6,44 +6,43 @@ Created on Wed Nov 14 20:22:32 2018
 @author: AfanasiChihaioglo
 """
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog
+from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QSizePolicy
 from PyQt5 import QtCore, QtGui, QtWidgets
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.linear_model import LinearRegression
-
-
+import random
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
       # Include the GUI.py
 # -*- coding: utf-8 -*-
 
 def func():
          print("Clicked")
 
-class LinearRegressionGD(object):
-
-    def __init__(self, eta=0.001, n_iter=20):
-        self.eta = eta
-        self.n_iter = n_iter
-
-    def fit(self, X, y):
-        self.w_ = np.zeros(1 + X.shape[1])
-        self.cost_ = []
-
-        for i in range(self.n_iter):
-            output = self.net_input(X)
-            errors = (y - output)
-            self.w_[1:] += self.eta * X.T.dot(errors)
-            self.w_[0] += self.eta * errors.sum()
-            cost = (errors**2).sum() / 2.0
-            self.cost_.append(cost)
-        return self
-
-    def net_input(self, X):
-        return np.dot(X, self.w_[1:]) + self.w_[0]
-
-    def predict(self, X):
-        return self.net_input(X)
+class PlotCanvas(FigureCanvas):
+ 
+    def __init__(self, parent=None, width=5, height=4, dpi=100):
+        fig = Figure(figsize=(width, height), dpi=dpi)
+        self.axes = fig.add_subplot(111)
+ 
+        FigureCanvas.__init__(self, fig)
+        self.setParent(parent)
+ 
+        FigureCanvas.setSizePolicy(self,
+                QSizePolicy.Expanding,
+                QSizePolicy.Expanding)
+        FigureCanvas.updateGeometry(self)
+        self.plot()
+ 
+ 
+    def plot(self):
+        data = [random.random() for i in range(25)]
+        ax = self.figure.add_subplot(111)
+        ax.plot(data, 'r-')
+        ax.set_title('PyQt Matplotlib Example')
+        self.draw()
 
 class Ui_MainWindow(object):         # All of these will be imported in header
     
@@ -60,8 +59,9 @@ class Ui_MainWindow(object):         # All of these will be imported in header
             return fileName
     
     def generateRegressor(self): #Function to Generate Regression Model by pressing the button
-        print (fileName)
-        df = pd.read_csv(fileName,sep="\s+")
+        self.textBrowser_2.clear()
+        self.textBrowser_3.clear()
+        df = pd.read_csv(fileName,sep="\s+")      # Need to automise the data parsing
 
         df.columns = ['CRIM', 'ZN', 'INDUS', 'CHAS', 
               'NOX', 'RM', 'AGE', 'DIS', 'RAD', 
@@ -72,10 +72,10 @@ class Ui_MainWindow(object):         # All of these will be imported in header
 
 
 
-        lr = LinearRegressionGD()
+        #lr = LinearRegressionGD()
         def lin_regplot(X, y, model):
             plt.scatter(X, y, c='steelblue', edgecolor='white', s=70)
-            plt.plot(X, model.predict(X), color='black', lw=2)    
+            plt.plot(X, model.predict(X), color='black', lw=2)
             return 
 
 
@@ -111,9 +111,9 @@ class Ui_MainWindow(object):         # All of these will be imported in header
         self.list = QtWidgets.QTextBrowser(self.centralwidget)
         self.list.setGeometry(QtCore.QRect(220, 30, 131, 291))
         self.list.setObjectName("list")
-        self.graphicsView = QtWidgets.QGraphicsView(self.centralwidget)
-        self.graphicsView.setGeometry(QtCore.QRect(410, 30, 256, 192))
-        self.graphicsView.setObjectName("graphicsView")
+        #self.graphicsView = QtWidgets.QGraphicsView(self.centralwidget)
+        #self.graphicsView.setGeometry(QtCore.QRect(410, 30, 256, 192))
+        #self.graphicsView.setObjectName("graphicsView")
         self.label = QtWidgets.QLabel(self.centralwidget)
         self.label.setGeometry(QtCore.QRect(510, 10, 60, 16))
         self.label.setObjectName("label")
@@ -168,10 +168,11 @@ class AppWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.ui = Ui_MainWindow()
+        m = PlotCanvas(self, width=1, height=1)
+        m.setGeometry(410, 30, 256, 192)
         self.ui.setupUi(self)
         self.show()  
 
-print("Hello World")
 app = QApplication(sys.argv)
 w = AppWindow()
 w.show()
