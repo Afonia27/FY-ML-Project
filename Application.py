@@ -97,7 +97,9 @@ class AppWindow(QMainWindow):
         self.ui.setupUi(self)
         self.show()  
 
+print("Hello World")
 app = QApplication(sys.argv)
 w = AppWindow()
 w.show()
 sys.exit(app.exec_())
+print("Hello World")
