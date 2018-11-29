@@ -176,6 +176,7 @@ class Ui_MainWindow(object):         # All of these will be imported in header
         self.retranslateUi(MainWindow)
         self.pushButton.clicked.connect(self.openFile)
         self.pushButton_2.clicked.connect(self.openWindow)
+        self.pushButton_2.clicked.connect(self.generateRegressor)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
