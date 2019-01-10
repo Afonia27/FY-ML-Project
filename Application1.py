@@ -5,6 +5,7 @@ Created on Wed Nov 14 20:22:32 2018
 @author: AfanasiChihaioglo
 """
 import sys
+import obd
 from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QSizePolicy, QDialog,QPushButton, QVBoxLayout
 from PyQt5 import QtCore, QtGui, QtWidgets
 import pandas as pd
@@ -28,20 +29,17 @@ class Window(QDialog):
         # this is the Canvas Widget that displays the `figure`
         # it takes the `figure` instance as a parameter to __init__
         self.canvas = FigureCanvas(self.figure)
-
         # this is the Navigation widget
         # it takes the Canvas widget and a parent
         self.toolbar = NavigationToolbar(self.canvas, self)
 
         # Just some button connected to `plot` method
-        self.button = QPushButton('Plot')
-        self.button.clicked.connect(self.plot)
+        #self.plot
 
         # set the layout
         layout = QVBoxLayout()
         layout.addWidget(self.toolbar)
         layout.addWidget(self.canvas)
-        layout.addWidget(self.button)
         self.setLayout(layout)
 
     def plot(self):
@@ -83,20 +81,74 @@ class Ui_MainWindow(object):         # All of these will be imported in header
             file.close()
             print(fileName)
             return fileName
+        
+    def connectVehicle(self):
+        connection = obd.OBD() #Establish the connection to the vehicle
+        if connection.is_connected() == True:
+            self.list.append("Connection is successfully established")
+        else:
+            self.list.append("Connection could not be established")
+        
+        cmd = obd.commands.RPM # select an OBD command to check RPM to verify the connection
+        response = connection.query(cmd) # send the command, and parse the response
+        self.list.append(response.value)
+        response = connection.query(obd.commands.GET_DTC)
+        self.list.append(response.value)
+
+        
+    def loadDTC(self):
+        options = QFileDialog.Options()
+        fileDTC, _ = QFileDialog.getOpenFileName(None,"QFileDialog.getOpenFileName()", "","All Files (*);;Text Files (*.txt)", options=options)
+        if fileDTC:
+            self.list.append(fileDTC)
+            file = open(fileDTC,"r")
+            self.list.append(file.read())
+            file.close()
+            print(fileDTC)
+            df = pd.read_csv(fileDTC,header=0, names=['DTC'],sep="\s+")
+            global score
+            score = 0
+            undefined = 0
+            DTC = ""
+            for i in range(0,len(df['DTC'])):
+                DTC = list(df['DTC'][i])
+                if DTC[0] == "P":
+                    score+=3
+                elif DTC[0] == "C":
+                    score+=2
+                elif DTC[0] == "B":
+                    score+=1
+                else:
+                    undefined+=1
+            self.textBrowser_4.clear()
+            self.textBrowser_4.append(str(score))
+            
+            print("Undefined:"+ str(undefined))
+            self.generateRegressor(score)
+            
     
-    def generateRegressor(self): #Function to Generate Regression Model by pressing the button
-        self.textBrowser_2.clear()
+    def generateRegressor(self,score): #Function to Generate Regression Model by pressing the button
+        self.textBrowser_2.clear()  #To empty the text boxes
         self.textBrowser_3.clear()
         df = pd.read_csv(fileName,sep="\s+")      # Need to automise the data parsing
 
-        df.columns = ['CRIM', 'ZN', 'INDUS', 'CHAS', 
-              'NOX', 'RM', 'AGE', 'DIS', 'RAD', 
-              'TAX', 'PTRATIO', 'B', 'LSTAT', 'MEDV']
+        df.columns = ['Time', 'SOH']
         df.head()
-        X = df[['RM']].values
-        y = df['MEDV'].values
-
-
+        X = df[['SOH']].values
+        y = df['Time'].values
+        print(X)
+        if score != 0:
+            '''scoreary=[]
+            scorearX=[X[len(X)-1]+1]
+            print(scorearX)
+            scoreary.append(score)
+            np.append(scorearX,X)
+            np.append(scoreary,y)'''
+            y[len(y)-1] = score
+            print(X)
+            #y.concatenate(y[len(y)]+1)
+            score = 0
+        self.openWindow()
 
         #lr = LinearRegressionGD()
         def lin_regplot(X, y, model):
@@ -108,15 +160,22 @@ class Ui_MainWindow(object):         # All of these will be imported in header
         slr = LinearRegression()
         slr.fit(X, y)
         y_pred = slr.predict(X)
-        self.textBrowser_2.append(str(slr.coef_[0]))
-        self.textBrowser_3.append(str(slr.intercept_))
-        print(slr.coef_[0])
-        print(slr.intercept_)
-
-
+        gradient = slr.coef_[0]
+        y_intercept= slr.intercept_
+        self.textBrowser_2.append(str(gradient))
+        self.textBrowser_3.append(str(y_intercept))
+        print(gradient)
+        print(y_intercept)
+        
+        #Calculate day of failure
+        day_of_failure= ((y[len(y)-1]+10)-y_intercept) / gradient #Add 10 to simulate difference from the nominal score
+        self.textBrowser_5.append(str(day_of_failure))
+        
+        #NEED TO APPEND SCORE AND DAY OF FAILURE TO MAIN ARRAY
+        
         lin_regplot(X, y, slr)
-        plt.xlabel('Average number of rooms [RM]')
-        plt.ylabel('Price in $1000s [MEDV]')
+        plt.xlabel('Time in days')
+        plt.ylabel('Current score')
 
         #plt.savefig('images/10_07.png', dpi=300)
         plt.show()
@@ -141,7 +200,7 @@ class Ui_MainWindow(object):         # All of these will be imported in header
         #self.graphicsView.setGeometry(QtCore.QRect(410, 30, 256, 192))
         #self.graphicsView.setObjectName("graphicsView")
         self.label = QtWidgets.QLabel(self.centralwidget)
-        self.label.setGeometry(QtCore.QRect(510, 10, 60, 16))
+        self.label.setGeometry(QtCore.QRect(600, 250, 60, 16))
         self.label.setObjectName("label")
         self.label_2 = QtWidgets.QLabel(self.centralwidget)
         self.label_2.setGeometry(QtCore.QRect(270, 10, 60, 16))
@@ -152,15 +211,30 @@ class Ui_MainWindow(object):         # All of these will be imported in header
         self.textBrowser_3 = QtWidgets.QTextBrowser(self.centralwidget)
         self.textBrowser_3.setGeometry(QtCore.QRect(500, 270, 50, 21))
         self.textBrowser_3.setObjectName("textBrowser_3")
+        self.textBrowser_4 = QtWidgets.QTextBrowser(self.centralwidget)
+        self.textBrowser_4.setGeometry(QtCore.QRect(590, 270, 50, 21))
+        self.textBrowser_4.setObjectName("textBrowser_4")
+        self.textBrowser_5 = QtWidgets.QTextBrowser(self.centralwidget)
+        self.textBrowser_5.setGeometry(QtCore.QRect(680, 270, 50, 21))
+        self.textBrowser_5.setObjectName("textBrowser_5")
         self.label_3 = QtWidgets.QLabel(self.centralwidget)
         self.label_3.setGeometry(QtCore.QRect(400, 250, 60, 16))
         self.label_3.setObjectName("label_3")
         self.label_4 = QtWidgets.QLabel(self.centralwidget)
         self.label_4.setGeometry(QtCore.QRect(500, 250, 60, 16))
         self.label_4.setObjectName("label_4")
+        self.label_5 = QtWidgets.QLabel(self.centralwidget)
+        self.label_5.setGeometry(QtCore.QRect(700, 250, 60, 16))
+        self.label_5.setObjectName("label_4")
         self.pushButton_2 = QtWidgets.QPushButton(self.centralwidget)
         self.pushButton_2.setGeometry(QtCore.QRect(40, 160, 113, 32))
         self.pushButton_2.setObjectName("pushButton_2")
+        self.pushButton_3 = QtWidgets.QPushButton(self.centralwidget)
+        self.pushButton_3.setGeometry(QtCore.QRect(40, 210, 113, 32))
+        self.pushButton_3.setObjectName("pushButton_3")
+        self.pushButton_4 = QtWidgets.QPushButton(self.centralwidget) #Button for vehicle connection
+        self.pushButton_4.setGeometry(QtCore.QRect(15, 260, 180, 32))
+        self.pushButton_4.setObjectName("pushButton_4")
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 754, 22))
@@ -175,19 +249,24 @@ class Ui_MainWindow(object):         # All of these will be imported in header
 
         self.retranslateUi(MainWindow)
         self.pushButton.clicked.connect(self.openFile)
-        self.pushButton_2.clicked.connect(self.openWindow)
+        self.pushButton_3.clicked.connect(self.loadDTC)
+        #self.pushButton_2.clicked.connect(self.openWindow)
         self.pushButton_2.clicked.connect(self.generateRegressor)
+        self.pushButton_4.clicked.connect(self.connectVehicle)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "Program"))
         self.pushButton.setText(_translate("MainWindow", "Load file"))
-        self.label.setText(_translate("MainWindow", "Graph"))
+        self.label.setText(_translate("MainWindow", "Score"))
         self.label_2.setText(_translate("MainWindow", "List"))
         self.label_3.setText(_translate("MainWindow", "Gradient"))
         self.label_4.setText(_translate("MainWindow", "Intercept"))
+        self.label_5.setText(_translate("MainWindow", "Failure day"))
         self.pushButton_2.setText(_translate("MainWindow", "Generate"))
+        self.pushButton_3.setText(_translate("MainWindow", "Load DTC's"))
+        self.pushButton_4.setText(_translate("MainWindow", "Connect to the vehicle"))
         self.menuFile.setTitle(_translate("MainWindow", "File"))
         self.statusbar.setStatusTip(_translate("MainWindow", "hh"))
 
