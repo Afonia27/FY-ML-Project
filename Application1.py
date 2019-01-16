@@ -19,6 +19,10 @@ from matplotlib.figure import Figure
 
       # Include the GUI.py
 # -*- coding: utf-8 -*-
+global Days
+Days = np.empty([1, 1])
+global Error_scores
+Error_scores = np.empty([1,1])
 
 class Window(QDialog):
     def __init__(self, parent=None):
@@ -74,6 +78,8 @@ class Ui_MainWindow(object):         # All of these will be imported in header
     def openFile(self):    #Function to open File by pressing the button
         options = QFileDialog.Options()
         global fileName  #Global in order to be read by other functions
+        global Days
+        global Error_scores
         fileName, _ = QFileDialog.getOpenFileName(None,"QFileDialog.getOpenFileName()", "","All Files (*);;Text Files (*.txt)", options=options)
         if fileName:
             self.list.append(fileName)
@@ -81,7 +87,15 @@ class Ui_MainWindow(object):         # All of these will be imported in header
             self.list.append(file.read())
             file.close()
             print(fileName)
-            return fileName
+            
+        df = pd.read_csv(fileName,sep="\s+")      # Need to automise the data parsing
+
+        df.columns = ['Error Scores', 'Days']
+        df.head()
+        Days = df[['Days']].values
+        Error_scores = df['Error Scores'].values  #State of Healh 
+        print(str(Error_scores.ndim)+str(Error_scores.shape))
+        
         
     def connectVehicle(self):
         connection = obd.OBD() #Establish the connection to the vehicle
@@ -131,15 +145,12 @@ class Ui_MainWindow(object):         # All of these will be imported in header
     #Function to Generate Regression Model by pressing the 'Generate' button, 
     #should take X and y as input
     def generateRegressor(self,score): 
+        global Days
+        global Error_scores
         self.textBrowser_2.clear()  #To empty the text boxes
         self.textBrowser_3.clear()
-        df = pd.read_csv(fileName,sep="\s+")      # Need to automise the data parsing
-
-        df.columns = ['Error Scores', 'Days']
-        df.head()
-        Days = df[['Days']].values
-        Error_scores = df['Error Scores'].values  #State of Healh 
         print("This is X:",Days)
+        print("Shape is:",Error_scores.ndim)
         if score != 0:
             '''scoreary=[]
             scorearX=[X[len(X)-1]+1]
@@ -200,13 +211,24 @@ class Ui_MainWindow(object):         # All of these will be imported in header
         
         
     def addValue(self):
-        value = 15
-        X= self.generateRegressor(score = 0)
-        print(X)
-        print(X.shape,X.ndim)
-        Z= np.append(X,[value])
-        print(Z)   
-        print(Z.shape,Z.ndim)
+        #print(Days.shape)
+        global Days
+        global Error_scores
+        print(Days)
+        print(Error_scores)
+        Days = np.append(Days,[Days[len(Days)-1]+1]) # Add the new Day value on day-axis to host new score
+        Days = np.reshape(Days,(np.size(Days),-1)) # Reshape the array to be in correct format
+        Error_scores = np.append(Error_scores,[15]) # Add the new point from the text menu
+        print(Days)
+        print(Error_scores)
+        
+
+#        value = 15
+#        X= self.generateRegressor(score = 0)
+#        print(X)
+#        print(X.shape,X.ndim)
+        
+
 
         
     
@@ -305,7 +327,7 @@ class Ui_MainWindow(object):         # All of these will be imported in header
         self.pushButton_5.setText(_translate("MainWindow", "Add point (DTC)"))
         self.pushButton_6.setText(_translate("MainWindow", "Add point (Value)"))
         self.menuFile.setTitle(_translate("MainWindow", "File"))
-        self.statusbar.setStatusTip(_translate("MainWindow", "hh"))
+        self.statusbar.setStatusTip(_translate("MainWindow", "Welcome!"))
 
 
 class AppWindow(QMainWindow):
@@ -319,6 +341,7 @@ class AppWindow(QMainWindow):
 # The initiation of the program
         
 if __name__ == "__main__":
+    Days = np.empty([1, 1])
     def run_app():
         app = QApplication(sys.argv)
         window = AppWindow()
