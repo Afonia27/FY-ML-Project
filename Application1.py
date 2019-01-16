@@ -184,7 +184,12 @@ class Ui_MainWindow(object):         # All of these will be imported in header
         #Calculate the new Error score
         Nominal_Error_Score = 45
         Last_Error_Score = Error_scores[len(Error_scores)-1]
-        New_Error_Score = Last_Error_Score+(Nominal_Error_Score-Last_Error_Score)
+        New_Error_Score = Last_Error_Score+abs(Nominal_Error_Score-Last_Error_Score)
+        
+        if New_Error_Score >= Nominal_Error_Score:
+            self.list.append("IT IS TIME TO CHECK THE VEHICLE")
+        
+        
         
         #Calculate day of failure
         day_of_failure= (New_Error_Score-y_intercept) / gradient #Add 10 to simulate difference from the nominal score
@@ -218,7 +223,7 @@ class Ui_MainWindow(object):         # All of these will be imported in header
         print(Error_scores)
         Days = np.append(Days,[Days[len(Days)-1]+1]) # Add the new Day value on day-axis to host new score
         Days = np.reshape(Days,(np.size(Days),-1)) # Reshape the array to be in correct format
-        Error_scores = np.append(Error_scores,[15]) # Add the new point from the text menu
+        Error_scores = np.append(Error_scores,[45]) # Add the new point from the text menu
         print(Days)
         print(Error_scores)
         
