@@ -186,7 +186,9 @@ class Ui_MainWindow(object):         # All of these will be imported in header
         lin_regplot(Days, Error_scores, slr)
         plt.xlabel('Time in days')
         plt.ylabel('Current score')
-        plt.title("Score=",New_Error_Score," Day of failure=",day_of_failure)
+        #Title = str("Score=",str(New_Error_Score))
+        #"Score="+New_Error_Score+" Day of failure="+day_of_failure
+        plt.title("Score= "+str(Last_Error_Score)+" Day of failure="+str(int(day_of_failure)))
         
         #Plot red dotted lines and extend the line
         plt.plot([0,day_of_failure],[New_Error_Score,New_Error_Score],'r--')  
@@ -207,7 +209,8 @@ class Ui_MainWindow(object):         # All of these will be imported in header
         print(Z.shape,Z.ndim)
 
         
-        
+    
+    # Define the HMI
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(754, 436)
@@ -313,16 +316,12 @@ class AppWindow(QMainWindow):
         self.show()  
     
 
-#app = QApplication(sys.argv)
-#w = AppWindow()
-#w.show()
-##sys.exit(app.exec_())
-#app.exec_()
-
+# The initiation of the program
+        
 if __name__ == "__main__":
     def run_app():
         app = QApplication(sys.argv)
-        w = AppWindow()
-        w.show()
+        window = AppWindow()
+        window.show()
         app.exec_()
     run_app()
