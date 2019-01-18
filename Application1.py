@@ -6,8 +6,10 @@ Created on Wed Nov 14 20:22:32 2018
 """
 import sys
 import obd
-from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QSizePolicy, QDialog,QPushButton, QVBoxLayout
+from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QSizePolicy, QDialog,QPushButton, QVBoxLayout, QLineEdit, QLabel
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import pyqtSlot
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,9 +22,9 @@ from matplotlib.figure import Figure
       # Include the GUI.py
 # -*- coding: utf-8 -*-
 global Days
-Days = np.empty([1, 1])
+Days = np.zeros([1, 1])
 global Error_scores
-Error_scores = np.empty([1,1])
+Error_scores = np.zeros([1,1])
 
 class Window(QDialog):
     def __init__(self, parent=None):
@@ -182,29 +184,39 @@ class Ui_MainWindow(object):         # All of these will be imported in header
         print(y_intercept)
         
         #Calculate the new Error score
-        Nominal_Error_Score = 45
+        Nominal_gradient = 5.3
+        delta_Score=((Nominal_gradient-gradient)*(Days[len(Days)-1]+1))+y_intercept
         Last_Error_Score = Error_scores[len(Error_scores)-1]
-        New_Error_Score = Last_Error_Score+abs(Nominal_Error_Score-Last_Error_Score)
+        print(Last_Error_Score)
+        New_Error_Score = Last_Error_Score+delta_Score
+        print(delta_Score)
+
         
-        if New_Error_Score >= Nominal_Error_Score:
-            self.list.append("IT IS TIME TO CHECK THE VEHICLE")
+        if gradient >= Nominal_gradient or delta_Score <= 0 or Last_Error_Score >= New_Error_Score:
+            self.list.append("IT IS TIME TO CHECK THE VEHICLE, HIGH SCORE")
         
+        if abs(Last_Error_Score-(gradient*Days[len(Days)-1]+y_intercept)) >= 5:
+            self.list.append("IT IS TIME TO CHECK THE VEHICLE, HIGH OFFSET ")
+        
+       
+        
+        #if New_E 
         
         
         #Calculate day of failure
-        day_of_failure= (New_Error_Score-y_intercept) / gradient #Add 10 to simulate difference from the nominal score
+        day_of_failure= (New_Error_Score-y_intercept) / gradient 
+        
+        if day_of_failure <= Days[len(Days)-1]:
+            self.list.append("IT IS TIME TO CHECK THE VEHICLE, DATE ")
+            
         self.textBrowser_5.clear()
-        self.textBrowser_5.append(str(day_of_failure))
-        #print(X[[0][len(X)-1]])
-        #print(X[[len(X)-1][0]])
-        #NEED TO APPEND SCORE AND DAY OF FAILURE TO MAIN ARRAY
+        self.textBrowser_5.append(str(float(day_of_failure)))
+
         
         lin_regplot(Days, Error_scores, slr)
         plt.xlabel('Time in days')
         plt.ylabel('Current score')
-        #Title = str("Score=",str(New_Error_Score))
-        #"Score="+New_Error_Score+" Day of failure="+day_of_failure
-        plt.title("Score= "+str(Last_Error_Score)+" Day of failure="+str(int(day_of_failure)))
+        plt.title("Score= "+str(Last_Error_Score)+" Day of failure= %.2f" % day_of_failure)
         
         #Plot red dotted lines and extend the line
         plt.plot([0,day_of_failure],[New_Error_Score,New_Error_Score],'r--')  
@@ -214,8 +226,10 @@ class Ui_MainWindow(object):         # All of these will be imported in header
         plt.show()
         return Days
         
-        
+    #@pyqtSlot()
     def addValue(self):
+        textboxValue = self.textbox.text()
+        self.textbox.setText("")
         #print(Days.shape)
         global Days
         global Error_scores
@@ -223,7 +237,7 @@ class Ui_MainWindow(object):         # All of these will be imported in header
         print(Error_scores)
         Days = np.append(Days,[Days[len(Days)-1]+1]) # Add the new Day value on day-axis to host new score
         Days = np.reshape(Days,(np.size(Days),-1)) # Reshape the array to be in correct format
-        Error_scores = np.append(Error_scores,[45]) # Add the new point from the text menu
+        Error_scores = np.append(Error_scores,[float(textboxValue)]) # Add the new point from the text menu
         print(Days)
         print(Error_scores)
         
@@ -293,15 +307,18 @@ class Ui_MainWindow(object):         # All of these will be imported in header
         self.pushButton_5 = QtWidgets.QPushButton(self.centralwidget) 
         self.pushButton_5.setGeometry(QtCore.QRect(15, 310, 180, 32))
         self.pushButton_5.setObjectName("pushButton_5")
-        self.pushButton_6 = QtWidgets.QPushButton(self.centralwidget) 
-        self.pushButton_6.setGeometry(QtCore.QRect(15, 360, 180, 32))
-        self.pushButton_6.setObjectName("pushButton_6")
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 754, 22))
         self.menubar.setObjectName("menubar")
         self.menuFile = QtWidgets.QMenu(self.menubar)
         self.menuFile.setObjectName("menuFile")
+        # Create textbox
+        self.textbox = QLineEdit(MainWindow)
+        self.textbox.move(60, 350)
+        self.textbox.resize(70,40)
+        
+        
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
@@ -314,7 +331,7 @@ class Ui_MainWindow(object):         # All of these will be imported in header
         #self.pushButton_2.clicked.connect(self.openWindow)
         self.pushButton_2.clicked.connect(self.generateRegressor)
         self.pushButton_4.clicked.connect(self.connectVehicle)
-        self.pushButton_6.clicked.connect(self.addValue)
+        self.pushButton_5.clicked.connect(self.addValue)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -322,15 +339,14 @@ class Ui_MainWindow(object):         # All of these will be imported in header
         MainWindow.setWindowTitle(_translate("MainWindow", "Program"))
         self.pushButton.setText(_translate("MainWindow", "Load file"))
         self.label.setText(_translate("MainWindow", "Score"))
-        self.label_2.setText(_translate("MainWindow", "List"))
+        self.label_2.setText(_translate("MainWindow", "Info"))
         self.label_3.setText(_translate("MainWindow", "Gradient"))
         self.label_4.setText(_translate("MainWindow", "Intercept"))
         self.label_5.setText(_translate("MainWindow", "Failure day"))
         self.pushButton_2.setText(_translate("MainWindow", "Generate"))
         self.pushButton_3.setText(_translate("MainWindow", "Load DTC's"))
         self.pushButton_4.setText(_translate("MainWindow", "Connect to the vehicle"))
-        self.pushButton_5.setText(_translate("MainWindow", "Add point (DTC)"))
-        self.pushButton_6.setText(_translate("MainWindow", "Add point (Value)"))
+        self.pushButton_5.setText(_translate("MainWindow", "Add point (Value)"))
         self.menuFile.setTitle(_translate("MainWindow", "File"))
         self.statusbar.setStatusTip(_translate("MainWindow", "Welcome!"))
 
