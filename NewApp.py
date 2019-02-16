@@ -191,7 +191,7 @@ class Ui_MainWindow(object):
         print(y_intercept)
         
         #Calculate the new Error score
-        Nominal_gradient = 5.3
+        Nominal_gradient = 0.4
         delta_Score=((Nominal_gradient-gradient)*(Days[len(Days)-1]+1))+y_intercept
         Last_Error_Score = Error_scores[len(Error_scores)-1]
         print(Last_Error_Score)
@@ -200,21 +200,18 @@ class Ui_MainWindow(object):
 
         
         if gradient >= Nominal_gradient or delta_Score <= 0 or Last_Error_Score >= New_Error_Score:
-            self.textBrowser_Info.append("IT IS TIME TO CHECK THE VEHICLE, HIGH SCORE")
+            self.textBrowser_Info.append("IT IS TIME TO CHECK THE VEHICLE, HIGH SCORE ")
         
         if abs(Last_Error_Score-(gradient*Days[len(Days)-1]+y_intercept)) >= 5:
             self.textBrowser_Info.append("IT IS TIME TO CHECK THE VEHICLE, HIGH OFFSET ")
         
-       
-        
-        #if New_E 
         
         
         #Calculate day of failure
         day_of_failure= (New_Error_Score-y_intercept) / gradient 
         
         if day_of_failure <= Days[len(Days)-1]:
-            self.textBrowser_Info("IT IS TIME TO CHECK THE VEHICLE, DATE ")
+            self.textBrowser_Info.append("IT IS TIME TO CHECK THE VEHICLE, DATE ")
             
         self.textBrowser_Failure.clear()
         self.textBrowser_Failure.append(str(float(day_of_failure)))
@@ -272,13 +269,8 @@ class Ui_MainWindow(object):
         self.pushButton_Generate.setGeometry(QtCore.QRect(50, 390, 186, 41))
         palette = QtGui.QPalette()
         self.pushButton_Generate.setPalette(palette)
-        self.pushButton_Generate.setStyleSheet("   border-style: outset;\n"
-"    border-width: 2px;\n"
-"    border-radius: 10px;\n"
-"    border-color: beige;\n"
-"    font: bold 14px;\n"
-"    min-width: 10em;\n"
-"    padding: 6px\n;" "border:1px solid rgb(255, 170, 255);")
+        self.pushButton_Generate.setStyleSheet("QPushButton{ border-width: 2px; border-radius: 10px; border-color: beige; font: bold 14px; min-width: 10em; padding: 6px; }"
+                                               "QPushButton:pressed{ border-style: inset; border-width: 2px; border-radius: 10px; border-color: blue; font: bold 14px; min-width: 10em; padding: 6px; }")
 
         self.pushButton_Generate.setObjectName("pushButton_Generate")
         self.textBrowser_Info = QtWidgets.QTextBrowser(self.centralwidget)
@@ -295,25 +287,15 @@ class Ui_MainWindow(object):
         self.pushButton_Connect.setGeometry(QtCore.QRect(50, 450, 186, 41))
         palette = QtGui.QPalette()
         self.pushButton_Connect.setPalette(palette)
-        self.pushButton_Connect.setStyleSheet("   border-style: outset;\n"
-"    border-width: 2px;\n"
-"    border-radius: 10px;\n"
-"    border-color: beige;\n"
-"    font: bold 14px;\n"
-"    min-width: 10em;\n"
-"    padding: 6px;")
+        self.pushButton_Connect.setStyleSheet("QPushButton{ border-width: 2px; border-radius: 10px; border-color: beige; font: bold 14px; min-width: 10em; padding: 6px; }"
+                                               "QPushButton:pressed{ border-style: inset; border-width: 2px; border-radius: 10px; border-color: blue; font: bold 14px; min-width: 10em; padding: 6px; }")
         self.pushButton_Connect.setObjectName("pushButton_Connect")
         self.pushButton_AddPoint = QtWidgets.QPushButton(self.centralwidget)
         self.pushButton_AddPoint.setGeometry(QtCore.QRect(250, 420, 186, 41))
         palette = QtGui.QPalette()
         self.pushButton_AddPoint.setPalette(palette)
-        self.pushButton_AddPoint.setStyleSheet("   border-style: outset;\n"
-"    border-width: 2px;\n"
-"    border-radius: 10px;\n"
-"    border-color: beige;\n"
-"    font: bold 14px;\n"
-"    min-width: 10em;\n"
-"    padding: 6px;")
+        self.pushButton_AddPoint.setStyleSheet("QPushButton{ border-width: 2px; border-radius: 10px; border-color: beige; font: bold 14px; min-width: 10em; padding: 6px; }"
+                                               "QPushButton:pressed{ border-style: inset; border-width: 2px; border-radius: 10px; border-color: blue; font: bold 14px; min-width: 10em; padding: 6px; }")
         self.pushButton_AddPoint.setObjectName("pushButton_AddPoint")
         self.verticalLayoutWidget = QtWidgets.QWidget(self.centralwidget)
         self.verticalLayoutWidget.setGeometry(QtCore.QRect(860, 20, 108, 488))
