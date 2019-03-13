@@ -14,12 +14,13 @@
  2014-10-12
 
  This example code is in the public domain.
-
+Vref = 3.32
  */
 
 #include <LFlash.h>
 #include <LSD.h>
 #include <LStorage.h>
+#include <Servo.h>
 #include <Wire.h> // Used to establied serial communication on the I2C bus
 #include "SparkFunTMP102.h" // Used to send and recieve specific information from our sensor
 #define Drv LFlash          // use Internal 10M Flash
@@ -28,9 +29,33 @@
 #include <LiquidCrystal_I2C.h> // Screen Setups
 LiquidCrystal_I2C lcd(0x27,20,4);
 TMP102 sensor0(0x48); // Initialize sensor at I2C address 0x48
+Servo myservo;
+
 
 boolean foo = 0; 
 float temperature = 0.0;
+uint32_t InterruptPinD2 = 0;
+int screen = 1;
+boolean measurement_flag = 0; 
+int routine_time = 7000;
+float current = 0.0;
+float voltage = 0.0;
+float hall_voltage = 0.0;
+
+
+
+//---------------------------Current Sensor---------------------------
+const int analogInPin = A0;
+
+// Number of samples to average the reading over
+// Change this to make the reading smoother... but beware of buffer overflows!
+const int avgSamples = 10;
+
+int sensorValue = 0;
+
+float sensitivity = 66; //8122.4;//100.0 / 500.0; //100mA per 500mV = 0.2
+float Vref = 2465; // Output voltage with no current: ~ 2500mV or 2.5V
+//-------------------------------------------
 
 void setup()
 {
@@ -42,7 +67,12 @@ void setup()
     lcd.clear();
     // Open serial communications and wait for port to open:
     Serial.begin(9600);
- 
+    myservo.attach(9);
+    pinMode(2,INPUT_PULLUP);
+    //digitalWrite(2,HIGH);
+    pinMode(3,INPUT_PULLUP);
+    attachInterrupt(1,ISR,FALLING); // 1 Corresponds to pin 3 (D3)
+    interrupts();
     //Serial.print("Initializing SD card...");
     //lcd.print("Initializing SD card...");
     // make sure that the default chip select pin is set to
@@ -67,39 +97,60 @@ void setup()
 void loop()
 {
   // make a string for assembling the data to log:
-  String dataString = "";
 
-  // read three sensors and append to the string:
-  for (int analogPin = 0; analogPin < 3; analogPin++) {
-    int sensor = analogRead(analogPin);
-    dataString += String(sensor);
-    if (analogPin < 2) {
-      dataString += ",";
+
+  switch(screen)
+  {
+    case 1:
+    {
+      lcd.clear();
+      lcd.print("Press button to");
+      lcd.setCursor(0,1);
+      lcd.print("Start");
+      delay(500);
+      if (measurement_flag == 1)
+      {
+        TestRoutine();
+        measurement_flag = 0;
+        
+      }
     }
   }
-  lcd.print(CheckTemp());
+
+
   
+}
 
-  // open the file. note that only one file can be open at a time,
-  // so you have to close this one before opening another.
- if (foo == 1){
-  LFile dataFile = Drv.open("datalog.csv", FILE_WRITE);
+float CheckVoltage()
+{
+  return voltage;
+}
 
-  // if the file is available, write to it:
-  if (dataFile) {
-    dataFile.println(dataString);
-    dataFile.close();
-    // print to the serial port too:
-    Serial.println(dataString);
-    
+float CheckCurrent()
+{
+  current = 0.0;
+  for (int i = 0; i < avgSamples; i++)
+  {
+    sensorValue += analogRead(analogInPin);
+
+    // wait 2 milliseconds before the next loop
+    // for the analog-to-digital converter to settle
+    // after the last reading:
+    delay(2);
   }
-  // if the file isn't open, pop up an error:
-  else {
-    Serial.println("error opening datalog.txt");
-  }
- }
- delay(500);
- lcd.clear();
+  sensorValue = sensorValue / avgSamples;
+
+  // The on-board ADC is 10-bits -> 2^10 = 1024 -> 5V / 1024 ~= 4.88mV
+  // The voltage is in millivolts
+  
+  //voltage = 4.88 * sensorValue;
+  hall_voltage = (sensorValue/1024.0) * 5000; // to get mV
+
+  // This will calculate the actual current (in mA)
+  // Using the Vref and sensitivity settings you configure
+  current = (hall_voltage - Vref) / sensitivity;
+  
+  return current; 
 }
 
 float CheckTemp()
@@ -115,8 +166,70 @@ float CheckTemp()
   return temperature;
 }
 
+String DataRegister()
+{ 
+    String dataString = "";
+    dataString += String(CheckVoltage());
+    dataString += ",";
+    dataString += String(CheckCurrent());
+    dataString += ",";
+    dataString += String(CheckTemp());
+    return dataString;
+}
 
+void SaveToFile(String dataString)
+{
+     LFile dataFile = Drv.open("datalog2.csv", FILE_WRITE);
 
+    // if the file is available, write to it:
+    if (dataFile) 
+      {
+    dataFile.println(dataString);
+    dataFile.close();
+    // print to the serial port too:
+      }
+  // if the file isn't open, pop up an error:
+     else 
+     {
+    Serial.println("error opening datalog.txt");
+     }
+}
+
+void TestRoutine()
+{
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Test Initiated");
+  delay(700);
+  int time_point = millis();
+  myservo.write(90);
+  delay(1000);
+  myservo.write(87);
+  delay(500);
+  myservo.write(84);
+  delay(500);
+  myservo.write(80); // Start motor
+  delay(500);
+  while ((millis()-time_point) < routine_time)
+  {
+    SaveToFile(DataRegister());
+
+  }
+
+  myservo.write(84);
+  delay(500);
+  myservo.write(87);
+  delay(500);
+  myservo.write(90); // Stop motor 
+  lcd.clear();
+  lcd.print("Test Completed");
+  delay(1500);
+}
+
+void ISR()
+{
+  measurement_flag = 1;
+}
 
 
 
