@@ -32,15 +32,19 @@ TMP102 sensor0(0x48); // Initialize sensor at I2C address 0x48
 Servo myservo;
 
 
+float CurrentValues[300];
+float VoltageValues[300];
 boolean foo = 0; 
 float temperature = 0.0;
 uint32_t InterruptPinD2 = 0;
 int screen = 1;
 boolean measurement_flag = 0; 
-int routine_time = 7000;
+int routine_time = 10000;
 float current = 0.0;
 float voltage = 0.0;
 float hall_voltage = 0.0;
+float sum = 0.0;
+char filechar[20];
 
 
 
@@ -92,6 +96,7 @@ void setup()
     //0:12-bit Temperature(-55C to +128C) 1:13-bit Temperature(-55C to +150C)
     sensor0.setExtendedMode(0);
 
+
 }
 
 void loop()
@@ -104,6 +109,7 @@ void loop()
     case 1:
     {
       lcd.clear();
+      //Serial.println("Availiable");
       lcd.print("Press button to");
       lcd.setCursor(0,1);
       lcd.print("Start");
@@ -123,6 +129,7 @@ void loop()
 
 float CheckVoltage()
 {
+  voltage = analogRead(A1);
   return voltage;
 }
 
@@ -138,6 +145,7 @@ float CheckCurrent()
     // after the last reading:
     delay(2);
   }
+  
   sensorValue = sensorValue / avgSamples;
 
   // The on-board ADC is 10-bits -> 2^10 = 1024 -> 5V / 1024 ~= 4.88mV
@@ -169,17 +177,23 @@ float CheckTemp()
 String DataRegister()
 { 
     String dataString = "";
-    dataString += String(CheckVoltage());
-    dataString += ",";
+//    for (int i = 0; i < 10; i++)
+//    {
+//      sensorValue += analogRead(analogInPin);
+//    }
     dataString += String(CheckCurrent());
-    dataString += ",";
-    dataString += String(CheckTemp());
+    //dataString += ",";
+    
+    //dataString += String(CheckVoltage());
+    //dataString += ",";
+    //dataString += String(CheckTemp());
     return dataString;
 }
 
-void SaveToFile(String dataString)
+void SaveToFile(String dataString, String filename)
 {
-     LFile dataFile = Drv.open("datalog2.csv", FILE_WRITE);
+     filename.toCharArray(filechar,20);
+     LFile dataFile = Drv.open(filechar, FILE_WRITE);
 
     // if the file is available, write to it:
     if (dataFile) 
@@ -193,6 +207,51 @@ void SaveToFile(String dataString)
      {
     Serial.println("error opening datalog.txt");
      }
+     
+}
+
+void SaveCurrent ()
+{
+  sum = 0.0;
+  for (int i = 0; i < CurrentValues[299]; i++)
+  {
+    for (int k = 0; k < avgSamples; k++)
+    {
+      sum += CurrentValues[i+k]; //To get the sample of values
+    }
+    i = i+ avgSamples;
+    
+    sensorValue = sum / avgSamples;
+
+  // The on-board ADC is 10-bits -> 2^10 = 1024 -> 5V / 1024 ~= 4.88mV
+  // The voltage is in millivolts
+  
+  //voltage = 4.88 * sensorValue;
+  hall_voltage = (sensorValue/1024.0) * 5000; // to get mV
+
+  // This will calculate the actual current (in mA)
+  // Using the Vref and sensitivity settings you configure
+  current = (hall_voltage - Vref) / sensitivity;
+  String dataString = "";
+  dataString += String(current);
+  SaveToFile(dataString, "current.csv");
+  }
+
+  // Save the lenght of the initial file used
+  String dataString = "";
+  dataString += String(CurrentValues[299]);
+  SaveToFile(dataString, "current.csv");
+}
+
+void SaveVoltage()
+{
+  for (int i = 0; i < VoltageValues[299]; i++)
+  {
+  String dataString = "";
+  dataString += String(VoltageValues[i]);
+  SaveToFile(dataString, "voltage.csv");
+  }
+  
 }
 
 void TestRoutine()
@@ -201,7 +260,6 @@ void TestRoutine()
   lcd.setCursor(0,0);
   lcd.print("Test Initiated");
   delay(700);
-  int time_point = millis();
   myservo.write(90);
   delay(1000);
   myservo.write(87);
@@ -210,17 +268,33 @@ void TestRoutine()
   delay(500);
   myservo.write(80); // Start motor
   delay(500);
-  while ((millis()-time_point) < routine_time)
-  {
-    SaveToFile(DataRegister());
-
+  int i = 0;
+  int ic = 0;
+  int time_point = millis();
+  float sum = 0;
+  while ((millis()-time_point) < (routine_time-5000))
+  { 
+    //SaveToFile(DataRegister());
+    CurrentValues[i] = analogRead(analogInPin);
+    i++;
   }
-
+  CurrentValues[299] = i+1;
+  time_point = millis();
+  i = 0;
+    while ((millis()-time_point) < (routine_time-5000))
+  { 
+    VoltageValues[i] = analogRead(analogInPin);
+    i++;
+  }
+  VoltageValues[299] = i+1;
   myservo.write(84);
   delay(500);
   myservo.write(87);
   delay(500);
   myservo.write(90); // Stop motor 
+  SaveCurrent();
+  SaveVoltage();// Do calculations and save evertyhing to the file
+
   lcd.clear();
   lcd.print("Test Completed");
   delay(1500);
