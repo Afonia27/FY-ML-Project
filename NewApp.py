@@ -28,12 +28,62 @@ import random
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
+from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
+import json
 
 global Days
 Days = np.zeros([1, 1])
 global Error_scores
 Error_scores = np.zeros([1,1])
 
+class AWS(object):
+    def __init__(self):
+        self.jsonError = """
+        {
+            "state" : {
+                "reported" : {
+                    "y_rotation" : "red"
+                 }
+             }
+        }
+        """
+        self.jsonOK = """
+        {
+            "state" : {
+                "reported" : {
+                    "y_rotation" : "white"
+                 }
+             }
+        }
+        """
+        # For certificate based connection
+        self.myMQTTClient = AWSIoTMQTTClient("AfAWS")
+        # For Websocket connection
+        # myMQTTClient = AWSIoTMQTTClient("myClientID", useWebsocket=True)
+        # Configurations
+        # For TLS mutual authentication
+        self.myMQTTClient.configureEndpoint("a3tjcvi6tnbsej-ats.iot.eu-west-2.amazonaws.com", 8883)
+        # For Websocket
+        # myMQTTClient.configureEndpoint("YOUR.ENDPOINT", 443)
+        # For TLS mutual authentication with TLS ALPN extension
+        # myMQTTClient.configureEndpoint("YOUR.ENDPOINT", 443)
+        self.myMQTTClient.configureCredentials("/Users/AfanasiChihaioglo/Desktop/Project/Sumerian IoT/New/AmazonRootCA1.pem", "/Users/AfanasiChihaioglo/Desktop/Project/Sumerian IoT/New/d7078f9608-private.pem.key", "/Users/AfanasiChihaioglo/Desktop/Project/Sumerian IoT/New/d7078f9608-certificate.pem.crt")
+        # For Websocket, we only need to configure the root CA
+        # myMQTTClient.configureCredentials("YOUR/ROOT/CA/PATH")
+        self.myMQTTClient.configureOfflinePublishQueueing(-1)  # Infinite offline Publish queueing
+        self.myMQTTClient.configureDrainingFrequency(2)  # Draining: 2 Hz
+        self.myMQTTClient.configureConnectDisconnectTimeout(10)  # 10 sec
+        self. myMQTTClient.configureMQTTOperationTimeout(5)  # 5 sec
+    
+    def Sumerian(self,mode = 1):
+        self.myMQTTClient.connect()
+        if mode == 1:
+            self.myMQTTClient.publish("$aws/things/box/shadow/update", self.jsonError, 0)
+        elif mode == 0:
+            self.myMQTTClient.publish("$aws/things/box/shadow/update", self.jsonOK, 0)
+        self.myMQTTClient.disconnect()    
+
+        
 class Window(QDialog):
     def __init__(self, parent=None):
         super(Window, self).__init__(parent)
@@ -79,7 +129,7 @@ class Window(QDialog):
 
 
 class Ui_MainWindow(object):
-        
+    
     def openWindow(self):
         self.window = Window()
         self.window.show()
@@ -115,9 +165,12 @@ class Ui_MainWindow(object):
         
         cmd = obd.commands.RPM # select an OBD command to check RPM to verify the connection
         response = connection.query(cmd) # send the command, and parse the response
-        self.textBrowser_Info.append(response.value)
+        #self.textBrowser_Info.append(str(response.value))
         response = connection.query(obd.commands.GET_DTC)
-        self.textBrowser_Info.append(response.value)
+        if str(response.value) == '[]':
+            self.textBrowser_Info.append("No DTC found")
+        else:
+            self.textBrowser_Info.append(str(response.value))
     
                 
     def loadDTC(self):
@@ -229,6 +282,20 @@ class Ui_MainWindow(object):
 
         plt.show()
         return Days
+    
+
+    def sendToSumerian(self):
+        self.AWS = AWS()
+        textboxVal = self.textEdit_WritePoint.toPlainText()
+        self.textEdit_WritePoint.setText("")
+        if textboxVal == "":
+            return
+        if textboxVal == "Error":
+            self.AWS.Sumerian(1)
+        elif textboxVal == "OK":
+            self.AWS.Sumerian(0)
+        
+        
         
     #@pyqtSlot()
     def addValue(self):
@@ -297,6 +364,15 @@ class Ui_MainWindow(object):
         self.pushButton_AddPoint.setStyleSheet("QPushButton{ border-width: 2px; border-radius: 10px; border-color: beige; font: bold 14px; min-width: 10em; padding: 6px; }"
                                                "QPushButton:pressed{ border-style: inset; border-width: 2px; border-radius: 10px; border-color: blue; font: bold 14px; min-width: 10em; padding: 6px; }")
         self.pushButton_AddPoint.setObjectName("pushButton_AddPoint")
+        
+        self.pushButton_Sumerian = QtWidgets.QPushButton(self.centralwidget)
+        self.pushButton_Sumerian.setGeometry(QtCore.QRect(560, 420, 186, 41))
+        palette = QtGui.QPalette()
+        self.pushButton_Sumerian.setPalette(palette)
+        self.pushButton_Sumerian.setStyleSheet("QPushButton{ border-width: 2px; border-radius: 10px; border-color: beige; font: bold 14px; min-width: 10em; padding: 6px; }"
+                                               "QPushButton:pressed{ border-style: inset; border-width: 2px; border-radius: 10px; border-color: blue; font: bold 14px; min-width: 10em; padding: 6px; }")
+        self.pushButton_Sumerian.setObjectName("pushButton_Sumerian")
+        
         self.verticalLayoutWidget = QtWidgets.QWidget(self.centralwidget)
         self.verticalLayoutWidget.setGeometry(QtCore.QRect(860, 20, 108, 488))
         self.verticalLayoutWidget.setObjectName("verticalLayoutWidget")
@@ -382,6 +458,7 @@ class Ui_MainWindow(object):
         self.pushButton_Generate.clicked.connect(self.generateRegressor)
         self.pushButton_Connect.clicked.connect(self.connectVehicle)
         self.pushButton_AddPoint.clicked.connect(self.addValue)
+        self.pushButton_Sumerian.clicked.connect(self.sendToSumerian)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -391,6 +468,7 @@ class Ui_MainWindow(object):
         self.label_Information.setText(_translate("MainWindow", "Information"))
         self.pushButton_Connect.setText(_translate("MainWindow", "Connect to vehicle"))
         self.pushButton_AddPoint.setText(_translate("MainWindow", "Add new point"))
+        self.pushButton_Sumerian.setText(_translate("MainWindow", "Send to AWS"))
         self.label_Gradient.setText(_translate("MainWindow", "<html><head/><body><p align=\"center\">Gradient</p></body></html>"))
         self.textBrowser_Gradient.setHtml(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
