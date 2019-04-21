@@ -29,7 +29,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
-import json
+import statsmodels.api as sm
 
 global Days
 Days = np.zeros([1, 1])
@@ -226,25 +226,37 @@ class Ui_MainWindow(object):
             score = 0
         self.openWindow()
 
-        #Function which takes arrays as an input and produces the graph
+        #Function which takes arrays as an input and produces the graph for Linear Regression
         def lin_regplot(X, y, model):
             plt.scatter(X, y, c='steelblue', edgecolor='white', s=70)
             plt.plot(X, model.predict(X), color='black', lw=2)
             return 
+        
+        def lowess_regplot(X, y,z):
+            plt.scatter(X, z, c='steelblue', edgecolor='white', s=70)
+            plt.plot(X, y[:,1], color='black', lw=2)
+            return
 
         #Create linear regressor and append values to boxes
-        slr = LinearRegression()    
-        slr.fit(Days, Error_scores)
-        y_pred = slr.predict(Days)
-        gradient = slr.coef_[0]
-        y_intercept= slr.intercept_
+#        slr = LinearRegression()    
+#        slr.fit(Days, Error_scores)
+#        y_pred = slr.predict(Days)
+#        gradient = slr.coef_[0]
+#        y_intercept= slr.intercept_
+        
+        #Lowless 
+        lowess = sm.nonparametric.lowess
+        Days1 = np.resize(Days,(len(Days),))  # Lowess requries the vector
+        w = lowess(Error_scores, Days1, frac=1./2.1) # Generate the Lowess Regressor
+        gradient = (w[len(w)-1][1] - w[len(w)-2][1])/(w[len(w)-1][0] - w[len(w)-2][0]) # m = y2-y1/x2-x1
+        y_intercept = w[len(w)-1][1] - gradient*(w[len(w)-1][0])  # intercept c= y-mx
         self.textBrowser_Gradient.append(str(gradient))
         self.textBrowser_Intercept.append(str(y_intercept))
         print(gradient)
         print(y_intercept)
         
         #Calculate the new Error score
-        Nominal_gradient = 0.4
+        Nominal_gradient = 10.6                        #THIS IS IMPORTANT VALUE TO CHANGE
         delta_Score=((Nominal_gradient-gradient)*(Days[len(Days)-1]+1))+y_intercept
         Last_Error_Score = Error_scores[len(Error_scores)-1]
         print(Last_Error_Score)
@@ -270,7 +282,9 @@ class Ui_MainWindow(object):
         self.textBrowser_Failure.append(str(float(day_of_failure)))
 
         
-        lin_regplot(Days, Error_scores, slr)
+        #lin_regplot(Days, Error_scores, slr) #PLOT Linear Regression
+        #plt.plot(Days,w[:,1], color = 'black')
+        lowess_regplot(Days,w,Error_scores)
         plt.xlabel('Time in days')
         plt.ylabel('Current score')
         plt.title("Score= "+str(Last_Error_Score)+" Day of failure= %.2f" % day_of_failure)
@@ -278,7 +292,9 @@ class Ui_MainWindow(object):
         #Plot red dotted lines and extend the line
         plt.plot([0,day_of_failure],[New_Error_Score,New_Error_Score],'r--')  
         plt.plot([day_of_failure,day_of_failure],[0,New_Error_Score],'r--')
-        plt.plot([0,day_of_failure],[y_intercept,New_Error_Score],'k')
+        #plt.plot([0,day_of_failure],[y_intercept,New_Error_Score],'k') # FOR LINEAR Regression
+        #plt.plot([w[len(w)-1][0],day_of_failure],[w[len(w)-1][1],New_Error_Score],'k') # FOR LINEAR Regression
+
 
         plt.show()
         return Days
